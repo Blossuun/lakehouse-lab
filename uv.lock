@@ -59,7 +59,7 @@ wheels = [
 [[package]]
 name = "lakehouse-mlops-aiops-lab"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 
 [package.dev-dependencies]
 dev = [
