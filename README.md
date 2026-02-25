@@ -118,6 +118,47 @@ uv run python -c "import lakehouse_mlops_aiops_lab; print('ok')"
 
 ---
 
+## 🐳 Local Infrastructure
+
+Start services:
+
+```bash
+docker compose -f infra/docker-compose.yml --env-file infra/.env up -d
+```
+
+Stop services:
+
+```bash
+docker compose -f infra/docker-compose.yml down
+```
+
+### Verify MinIO
+
+PowerShell example:
+
+```powershell
+$env:MINIO_ENDPOINT="http://localhost:9000"
+$env:AWS_ACCESS_KEY_ID="minioadmin"
+$env:AWS_SECRET_ACCESS_KEY="minioadmin123"
+$env:AWS_DEFAULT_REGION="ap-northeast-2"
+uv run python scripts/smoke_minio.py
+```
+
+### Verify MLflow
+
+```powershell
+$env:MLFLOW_TRACKING_URI="http://localhost:5000"
+uv run python scripts/smoke_mlflow.py
+```
+
+MLflow UI:
+http://localhost:5000
+
+MinIO Console:
+http://localhost:9001
+
+---
+
 ## 🎯 Project Goal
 
 이 리포지토리는 단순 코드 저장소가 아니라
@@ -128,3 +169,4 @@ uv run python -c "import lakehouse_mlops_aiops_lab; print('ok')"
 - 점진적 데이터/ML/AI 플랫폼 확장
 
 을 위한 학습 기록 저장소입니다.
+
