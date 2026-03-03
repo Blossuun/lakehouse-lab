@@ -15,18 +15,23 @@ from lakehouse_mlops_aiops_lab.transform.raw_to_silver_events import (
 def main() -> int:
     date = os.environ.get("SILVER_DATE", "2026-02-27")
     bucket = os.environ.get("SILVER_BUCKET", "datalake")
-    raw_prefix = os.environ.get("RAW_PREFIX", "raw/events")
-    silver_prefix = os.environ.get("SILVER_PREFIX", "silver/events")
+
+    raw_base_prefix = os.environ.get("RAW_PREFIX", "raw/events").rstrip("/")
+    silver_base_prefix = os.environ.get("SILVER_PREFIX", "silver/events").rstrip("/")
 
     cfg = S3Config.from_env()
     s3 = make_s3_client(cfg)
 
-    raw_prefix = f"{raw_prefix}/dt={date}/"
-    raw_keys = [k for k in list_keys(s3, bucket, raw_prefix) if k.endswith(".jsonl")]
+    # raw 존재 확인 (dt 포함 prefix는 smoke에서만 조립)
+    raw_partition_prefix = f"{raw_base_prefix}/dt={date}/"
+    raw_keys = [
+        k for k in list_keys(s3, bucket, raw_partition_prefix) if k.endswith(".jsonl")
+    ]
     if not raw_keys:
-        print(f"FAIL: no raw jsonl found under s3://{bucket}/{raw_prefix}")
+        print(f"FAIL: no raw jsonl found under s3://{bucket}/{raw_partition_prefix}")
         return 2
 
+    # transform 실행: base prefix만 전달 (transform이 dt=...를 내부에서 붙임)
     sys.argv = [
         "raw_to_silver_events",
         "--date",
@@ -34,9 +39,9 @@ def main() -> int:
         "--bucket",
         bucket,
         "--raw-prefix",
-        raw_prefix,
+        raw_base_prefix,
         "--silver-prefix",
-        silver_prefix,
+        silver_base_prefix,
         "--row-batch-size",
         "50000",
     ]
@@ -45,12 +50,17 @@ def main() -> int:
         print(f"FAIL: transform returned {rc}")
         return rc
 
-    silver_prefix = f"{silver_prefix}/dt={date}/"
+    # silver 결과 확인
+    silver_partition_prefix = f"{silver_base_prefix}/dt={date}/"
     part_keys = [
-        k for k in list_keys(s3, bucket, silver_prefix) if k.endswith(".parquet")
+        k
+        for k in list_keys(s3, bucket, silver_partition_prefix)
+        if k.endswith(".parquet")
     ]
     if not part_keys:
-        print(f"FAIL: no parquet parts found under s3://{bucket}/{silver_prefix}")
+        print(
+            f"FAIL: no parquet parts found under s3://{bucket}/{silver_partition_prefix}"
+        )
         return 3
 
     # Validate: read all parts and ensure event_id distinct
