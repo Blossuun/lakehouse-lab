@@ -15,6 +15,7 @@ from lakehouse_mlops_aiops_lab.utils.s3util import (
     list_keys,
     make_s3_client,
     put_bytes,
+    delete_parquet_under_prefix,
 )
 
 
@@ -189,18 +190,21 @@ def main() -> int:
     # fail fast
     try:
         s3.list_buckets()
-    except Exception:
-        print("ERROR: Cannot connect to S3 endpoint. Is Docker (MinIO) running?")
+    except Exception as exc:
+        print(
+            "ERROR: Cannot connect to S3 endpoint. Is Docker (MinIO) running? "
+            f"Details: {exc}"
+        )
         return 2
 
     ensure_bucket(s3, args.bucket)
 
     raw_partition_prefix = f"{args.raw_prefix}/dt={args.date}/"
-    raw_keys = [
+    raw_keys = sorted(
         k
         for k in list_keys(s3, args.bucket, raw_partition_prefix)
         if k.endswith(".jsonl")
-    ]
+    )
     if not raw_keys:
         print(
             f"ERROR: no raw jsonl found under s3://{args.bucket}/{raw_partition_prefix}"
@@ -214,8 +218,15 @@ def main() -> int:
     total_out = 0
     dedup_skipped = 0
     part_idx = 0
+    json_parse_errors = 0
 
     silver_partition_prefix = f"{args.silver_prefix}/dt={args.date}/"
+
+
+    deleted = delete_parquet_under_prefix(s3, args.bucket, silver_partition_prefix)
+    if deleted > 0:
+        print(f"INFO: deleted {deleted} stale parquet part(s) under s3://{args.bucket}/{silver_partition_prefix}")
+
 
     def flush_batch() -> None:
         nonlocal part_idx, total_out, batch
@@ -239,6 +250,7 @@ def main() -> int:
             try:
                 obj = json.loads(line_bytes.decode("utf-8"))
             except Exception:
+                json_parse_errors += 1
                 continue
             if not isinstance(obj, dict):
                 continue
@@ -263,7 +275,8 @@ def main() -> int:
     print(
         "OK: wrote silver parquet "
         f"s3://{args.bucket}/{silver_partition_prefix} "
-        f"parts={part_idx} rows={total_out} (raw_lines={total_in}, dedup_skipped={dedup_skipped})"
+        f"parts={part_idx} rows={total_out} (raw_lines={total_in}, "
+        f"dedup_skipped={dedup_skipped}, json_parse_errors={json_parse_errors})"
     )
     return 0
 

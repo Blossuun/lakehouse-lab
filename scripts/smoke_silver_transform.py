@@ -26,7 +26,22 @@ def main() -> int:
         return 2
 
     # run transform
-    sys.argv = ["raw_to_silver_events", "--date", date, "--row-batch-size", "50000"]
+    raw_prefix = f"{raw_prefix}/dt={date}/"
+    silver_prefix = f"{silver_prefix}/dt={date}/"
+
+    sys.argv = [
+        "raw_to_silver_events",
+        "--date",
+        date,
+        "--bucket",
+        bucket,
+        "--raw-prefix",
+        raw_prefix,
+        "--silver-prefix",
+        silver_prefix,
+        "--row-batch-size",
+        "50000",
+    ]
     rc = transform_main()
     if rc != 0:
         print(f"FAIL: transform returned {rc}")

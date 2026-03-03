@@ -102,3 +102,23 @@ def iter_lines(s3, bucket: str, key: str) -> Iterable[bytes]:
     # botocore supports iter_lines()
     for line in body.iter_lines():
         yield line
+
+
+def delete_keys(s3, bucket: str, keys: list[str]) -> None:
+    """Delete up to 1000 keys per request (S3 API limit)."""
+    if not keys:
+        return
+    # batch delete
+    for i in range(0, len(keys), 1000):
+        chunk = keys[i : i + 1000]
+        s3.delete_objects(
+            Bucket=bucket,
+            Delete={"Objects": [{"Key": k} for k in chunk], "Quiet": True},
+        )
+
+
+def delete_parquet_under_prefix(s3, bucket: str, prefix: str) -> int:
+    """Delete *.parquet objects under prefix. Returns deleted count."""
+    keys = [k for k in list_keys(s3, bucket, prefix) if k.endswith(".parquet")]
+    delete_keys(s3, bucket, keys)
+    return len(keys)
