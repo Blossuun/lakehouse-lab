@@ -75,10 +75,12 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+      HOME: /tmp
     volumes:
       - ./spark/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf:ro
       - ../jobs:/opt/lab/jobs:ro
       - ../scripts:/opt/lab/scripts:ro
+      - spark_ivy:/tmp/.ivy2
     working_dir: /opt/lab
     command: ["/bin/bash", "-lc", "sleep infinity"]
     ports:
@@ -87,3 +89,4 @@ services:
 volumes:
   minio_data:
   pg_data:
+  spark_ivy:
