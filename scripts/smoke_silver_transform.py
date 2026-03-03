@@ -15,19 +15,17 @@ from lakehouse_mlops_aiops_lab.transform.raw_to_silver_events import (
 def main() -> int:
     date = os.environ.get("SILVER_DATE", "2026-02-27")
     bucket = os.environ.get("SILVER_BUCKET", "datalake")
+    raw_prefix = os.environ.get("RAW_PREFIX", "raw/events")
+    silver_prefix = os.environ.get("SILVER_PREFIX", "silver/events")
 
     cfg = S3Config.from_env()
     s3 = make_s3_client(cfg)
 
-    raw_prefix = f"raw/events/dt={date}/"
+    raw_prefix = f"{raw_prefix}/dt={date}/"
     raw_keys = [k for k in list_keys(s3, bucket, raw_prefix) if k.endswith(".jsonl")]
     if not raw_keys:
         print(f"FAIL: no raw jsonl found under s3://{bucket}/{raw_prefix}")
         return 2
-
-    # run transform
-    raw_prefix = f"{raw_prefix}/dt={date}/"
-    silver_prefix = f"{silver_prefix}/dt={date}/"
 
     sys.argv = [
         "raw_to_silver_events",
@@ -47,7 +45,7 @@ def main() -> int:
         print(f"FAIL: transform returned {rc}")
         return rc
 
-    silver_prefix = f"silver/events/dt={date}/"
+    silver_prefix = f"{silver_prefix}/dt={date}/"
     part_keys = [
         k for k in list_keys(s3, bucket, silver_prefix) if k.endswith(".parquet")
     ]

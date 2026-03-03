@@ -222,11 +222,11 @@ def main() -> int:
 
     silver_partition_prefix = f"{args.silver_prefix}/dt={args.date}/"
 
-
     deleted = delete_parquet_under_prefix(s3, args.bucket, silver_partition_prefix)
     if deleted > 0:
-        print(f"INFO: deleted {deleted} stale parquet part(s) under s3://{args.bucket}/{silver_partition_prefix}")
-
+        print(
+            f"INFO: deleted {deleted} stale parquet part(s) under s3://{args.bucket}/{silver_partition_prefix}"
+        )
 
     def flush_batch() -> None:
         nonlocal part_idx, total_out, batch
