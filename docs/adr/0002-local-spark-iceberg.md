@@ -54,3 +54,39 @@
 
 > 주의: Spark 이미지에 내장된 Hadoop 버전과 hadoop-aws 버전은 맞추는 것이 안전함.
 > 로컬 PoC에서는 우선 고정 버전으로 시작하고, 문제 발생 시 Spark의 Hadoop 버전에 맞춰 조정한다.
+
+## 운영 중 발생한 문제와 해결
+
+### 1) Ivy 캐시 경로 문제
+
+증상:
+- spark-submit 실행 시 `/home/spark/.ivy2` 관련 FileNotFoundException 발생
+
+원인:
+- Spark 컨테이너의 기본 HOME 경로에 Ivy 캐시 디렉터리가 존재하지 않거나 쓰기 불가
+
+해결:
+- spark.jars.ivy=/tmp/ivy 로 지정
+- docker-compose에서 spark_ivy 볼륨을 마운트
+- HOME=/tmp 로 설정하여 안전한 캐시 위치 확보
+
+이 선택은 재현성과 권한 문제 방지를 위한 최소 변경 전략이다.
+
+---
+
+### 2) Hadoop AWS 버전 불일치
+
+증상:
+- NoClassDefFoundError: PrefetchingStatistics
+
+원인:
+- Spark 이미지 내부 Hadoop 버전과
+  spark-submit --packages 로 받은 hadoop-aws 버전 불일치
+
+해결:
+- Spark 컨테이너의 Hadoop 버전 확인
+- 동일 버전의 hadoop-aws 사용
+- aws-java-sdk-bundle은 명시 제거 (transitive dependency 활용)
+
+이 문제는 컨테이너 기반 Spark 환경에서 매우 흔하다.
+버전 정렬은 Lakehouse 구성에서 가장 중요한 안정성 요소 중 하나이다.
