@@ -41,16 +41,21 @@ def main() -> int:
 
     # 테이블이 없다면 생성(스키마는 DF 기반)
     # Iceberg는 overwritePartitions가 가능하므로 rerun 안전성 확보
-    (
-        df.writeTo(full_table)
-        .using("iceberg")
-        .tableProperty("format-version", "2")
-        .partitionedBy("dt")
-        .createOrReplace()
-    )
+    try:
+        (
+            df.writeTo(full_table)
+            .using("iceberg")
+            .tableProperty("format-version", "2")
+            .partitionedBy("dt")
+            .create()
+        )
+        print(f"INFO: created iceberg table {full_table}")
+    except Exception:
+        # already exists or race — ignore
+        pass
 
-    # dt 파티션만 덮어쓰기(동일 date rerun 안전)
-    (df.writeTo(full_table).overwritePartitions())
+    # dt 파티션 단위 재실행 안전
+    df.writeTo(full_table).overwritePartitions()
 
     # smoke 출력(간단 count)
     cnt = spark.table(full_table).where(F.col("dt") == args.date).count()
