@@ -298,6 +298,76 @@ uv run python scripts/smoke_silver_transform.py
 
 ---
 
+## 🧊 Spark + Iceberg (Silver → Lakehouse Table)
+
+Silver(Parquet) 파일을 Iceberg 테이블로 적재하여
+파일 레벨 데이터를 테이블 레벨(Lakehouse)로 승격합니다.
+
+---
+
+*bitnami는 더이상 무료 이미지를 제공하지 않으므로, 공식 apache/spark 이미지를 사용하도록 변경했습니다.*
+
+---
+
+### ⚠ 실행 전 조건
+
+1) 로컬 인프라 실행
+
+```bash
+docker compose -f infra/docker-compose.yml --env-file infra/.env up -d
+```
+
+2) Silver Parquet 존재
+
+```
+s3://datalake/silver/events/dt=YYYY-MM-DD/part-*.parquet
+```
+
+---
+
+### Spark Job 실행 (Windows PowerShell)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/smoke_iceberg_table.ps1 -Date 2026-02-27
+```
+
+---
+
+### 실행 로그 확인
+
+- PowerShell 콘솔에 spark-submit 로그 출력
+- 성공 시 예시:
+
+```
+OK: wrote iceberg table=local.lakehouse.silver_events dt=2026-02-27 rows=12345
+OK: smoke_iceberg_table completed
+```
+
+---
+
+### Spark UI (선택)
+
+실행 중에는 아래 주소에서 Spark UI 확인 가능:
+
+```
+http://localhost:4040
+```
+
+---
+
+### 중요한 구현 포인트
+
+- Ivy 캐시는 `/tmp/ivy`로 지정하여 컨테이너 권한 문제를 회피
+- Spark 내부 Hadoop 버전과 동일한 `hadoop-aws` 버전 사용
+- 기존 `part-*.parquet` 삭제 후 재작성하여 rerun 안정성 확보
+- Iceberg는 Hadoop catalog 기반으로 MinIO(S3a)를 warehouse로 사용
+
+설정값 선택 이유는 다음 ADR에 정리했습니다:
+
+- `docs/adr/0002-local-spark-iceberg.md`
+
+---
+
 ## 🎯 Project Goal
 
 이 리포지토리는 단순 코드 저장소가 아니라
