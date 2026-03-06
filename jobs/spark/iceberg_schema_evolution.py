@@ -46,9 +46,14 @@ def main() -> int:
 
     # 3) compatibility check: existing rows should have NULL for the new column
     df = spark.table(full_table).where(F.col("dt") == args.date)
-    null_cnt = df.where(F.col(args.new_column).isNull()).count()
     total_cnt = df.count()
+    if total_cnt == 0:
+        print(
+            f"FAIL: no rows found for dt={args.date}. Cannot verify schema evolution meaningfully."
+        )
+        return 3
 
+    null_cnt = df.where(F.col(args.new_column).isNull()).count()
     print(
         f"OK: schema evolution verified dt={args.date} null_in_new_col={null_cnt}/{total_cnt}"
     )
