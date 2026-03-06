@@ -407,7 +407,7 @@ PR #7에서는 Iceberg Silver 테이블에 대한 **데이터 품질 검증(Data
 
 - Iceberg 테이블이 **분석/ML에 사용 가능한 상태인지 검증**
 - 품질 규칙 위반 시 **downstream 작업 중단**
-- 품질 결과를 **JSON 리포트로 기록**
+- 품질 결과를 Spark가 생성한 text output directory에 **JSON 리포트로 기록**
 
 검증 대상 테이블:
 
@@ -476,10 +476,10 @@ docs/data_contracts/silver_quality_rules.md
 
 ## 품질 리포트 위치
 
-검증 결과는 JSON 리포트로 저장됩니다.
+검증 결과는 Spark output directory 형태의 JSON 리포트로 저장됩니다.
 
 ```
-s3://datalake/audit/quality_checks/dt=YYYY-MM-DD/
+s3a://datalake/audit/quality_checks/dt=YYYY-MM-DD/
 ```
 
 리포트에는 다음 정보가 포함됩니다.

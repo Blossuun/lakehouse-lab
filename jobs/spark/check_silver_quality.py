@@ -46,7 +46,7 @@ def main() -> int:
     )
 
     full_table = f"{args.catalog}.{args.namespace}.{args.table}"
-    df = spark.table(full_table).where(F.col("dt") == args.date)
+    df = spark.table(full_table).where(F.col("dt") == args.date).cache()
 
     total_count = df.count()
 
@@ -223,11 +223,12 @@ def main() -> int:
     print(report_json)
 
     if args.report_out:
-        # write single text file to S3/local path
+        # Write a Spark output directory/prefix containing text part files
         spark.createDataFrame([(report_json,)], ["json"]).coalesce(1).write.mode(
             "overwrite"
         ).text(args.report_out)
 
+    df.unpersist()
     spark.stop()
     return 0 if all_passed else 2
 
