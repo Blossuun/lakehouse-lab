@@ -13,7 +13,7 @@ $PACKAGES = "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:$ICEBERG_VERSION,
 
 function Run-SparkSubmit {
   param(
-    [Parameter(Mandatory=$true)]
+    [Parameter(Mandatory = $true)]
     [string[]]$AppArgs
   )
 
@@ -28,8 +28,8 @@ function Run-SparkSubmit {
   Write-Host "INFO: Running:"
   Write-Host ("  " + ($cmd -join " "))
 
-  & $cmd[0] $cmd[1..($cmd.Length-1)]
-  return $LASTEXITCODE
+  & $cmd[0] $cmd[1..($cmd.Length - 1)] | Out-Host
+  return [int]$LASTEXITCODE
 }
 
 # 1) Inspect snapshots/history
