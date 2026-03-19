@@ -14,6 +14,7 @@ Data Engineering → MLOps → (향후) AIOps/LLM Apps 까지
 
 - Python 3.12.x
 - uv installed
+- Optional: Task CLI (`go-task`) for task-based local entrypoints
 
 Python 버전 확인:
 
@@ -34,6 +35,16 @@ uv run python -c "import lakehouse_mlops_aiops_lab; print('ok')"
 ```
 
 정상이라면 `ok`가 출력됩니다.
+
+`Taskfile.yml`를 사용하는 경우, Task CLI 설치:
+
+Windows example:
+
+```powershell
+winget install Task.Task
+```
+
+Task는 선택 사항입니다. 기존 `uv run ...` 및 PowerShell 명령은 그대로 유효합니다.
 
 ---
 
@@ -59,6 +70,72 @@ uv run ruff check .
 ```bash
 uv run pytest -q
 ```
+
+---
+
+## 🧭 Thin Task Entry Points
+
+기존 `uv run ...` / `powershell ...` 명령은 그대로 유지합니다.  
+`Taskfile.yml`은 이를 대체하는 새 실행 로직이 아니라, **자주 쓰는 로컬 진입점을 정리한 얇은 인덱스**입니다.
+
+이 설계의 목적:
+
+- 로컬 개인 Docker 환경에서 리소스 사용을 예측 가능하게 유지
+- 전체 파이프라인을 기본 명령으로 강제하지 않기
+- 기존 smoke scripts를 그대로 재사용하기
+- 실행 순서를 README와 더 쉽게 연결하기
+
+### Before using task entrypoints
+
+Task 기반 로컬 워크플로우를 사용하기 전에 먼저 환경 파일을 준비합니다.
+
+```bash
+cp infra/.env.example infra/.env
+```
+
+Windows PowerShell example:
+
+```powershell
+Copy-Item .\infra\.env.example .\infra\.env
+```
+
+현재 PowerShell 기반 task는 **Windows PowerShell** 로컬 실행 기준으로 제공합니다.
+기존 `uv run ...` / `powershell ...` 명령은 계속 직접 사용할 수 있습니다.
+
+### Fast local loop
+
+아래는 여전히 기본 개발 루프입니다.
+
+```bash
+task dev:fmt
+task dev:lint
+task dev:test
+```
+
+### Stage-oriented local workflows
+
+필요한 단계만 명시적으로 실행합니다.
+
+```bash
+task infra:up
+task smoke:minio
+task smoke:mlflow
+task raw
+task silver
+task iceberg
+task iceberg:ops
+task quality
+task gold
+task shared-catalog
+task analytics
+task infra:down
+```
+
+### Notes
+
+- 이 Taskfile은 만능 통합 실행기가 아닙니다.
+- 기본으로 전체 파이프라인을 모두 실행하는 full-smoke 태스크는 이번 단계에서 추가하지 않습니다.
+- 다른 날짜나 커스텀 파라미터가 필요하면 기존 스크립트를 직접 실행합니다.
 
 ---
 

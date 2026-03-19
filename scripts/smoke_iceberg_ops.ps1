@@ -19,17 +19,19 @@ function Run-SparkSubmit {
 
   $baseArgs = @(
     "/opt/spark/bin/spark-submit",
-    "--conf", "spark.jars.ivy=/tmp/ivy2",
+    "--conf", "spark.jars.ivy=/tmp/.ivy2",
     "--packages", $PACKAGES
   )
 
-  $cmd = @("docker", "exec", "-it", "lab-spark") + $baseArgs + $AppArgs
+  $cmd = @("docker", "exec", "-i", "lab-spark") + $baseArgs + $AppArgs
 
   Write-Host "INFO: Running:"
   Write-Host ("  " + ($cmd -join " "))
 
-  & $cmd[0] $cmd[1..($cmd.Length-1)]
-  return $LASTEXITCODE
+  & $cmd[0] $cmd[1..($cmd.Length-1)] | Out-Host
+
+  $exitCode = $LASTEXITCODE
+  return [int]$exitCode
 }
 
 # 1) Inspect snapshots/history
