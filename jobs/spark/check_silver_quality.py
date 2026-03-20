@@ -35,6 +35,18 @@ def make_rule(
     }
 
 
+def scalar_int(value) -> int:
+    if value is None:
+        return 0
+    return int(value)
+
+
+def scalar_float(value) -> float:
+    if value is None:
+        return 0.0
+    return float(value)
+
+
 def main() -> int:
     args = parse_args()
 
@@ -46,13 +58,118 @@ def main() -> int:
     )
 
     full_table = f"{args.catalog}.{args.namespace}.{args.table}"
-    df = spark.table(full_table).where(F.col("dt") == args.date).cache()
+    df = spark.table(full_table).where(F.col("dt") == args.date)
 
-    total_count = df.count()
+    allowed_event_types = ["view", "search", "add_to_cart", "purchase", "refund"]
+
+    metrics_row = (
+        df.agg(
+            F.count(F.lit(1)).alias("total_count"),
+            F.countDistinct("event_id").alias("distinct_event_id"),
+            F.sum(
+                F.when(
+                    (~F.col("event_type").isin(allowed_event_types))
+                    | F.col("event_type").isNull(),
+                    1,
+                ).otherwise(0)
+            ).alias("invalid_event_type_count"),
+            F.sum(
+                F.when(
+                    (~F.col("schema_version").isin([1, 2]))
+                    | F.col("schema_version").isNull(),
+                    1,
+                ).otherwise(0)
+            ).alias("invalid_schema_version_count"),
+            F.sum(
+                F.when(F.col("event_time").isNull(), 1).otherwise(0)
+            ).alias("null_event_time_count"),
+            F.sum(
+                F.when(F.col("ingest_time").isNull(), 1).otherwise(0)
+            ).alias("null_ingest_time_count"),
+            F.sum(
+                F.when(
+                    F.col("event_time").isNotNull()
+                    & F.col("ingest_time").isNotNull()
+                    & (F.col("event_time") > F.col("ingest_time")),
+                    1,
+                ).otherwise(0)
+            ).alias("invalid_time_order_count"),
+            F.sum(
+                F.when(
+                    F.col("price").isNotNull() & (F.col("price") < 0),
+                    1,
+                ).otherwise(0)
+            ).alias("negative_price_count"),
+            F.sum(
+                F.when(
+                    F.col("total_amount").isNotNull() & (F.col("total_amount") < 0),
+                    1,
+                ).otherwise(0)
+            ).alias("negative_total_amount_count"),
+            F.sum(
+                F.when(
+                    F.col("refund_amount").isNotNull() & (F.col("refund_amount") < 0),
+                    1,
+                ).otherwise(0)
+            ).alias("negative_refund_amount_count"),
+            F.sum(
+                F.when(
+                    (F.col("event_type") == "purchase") & F.col("order_id").isNull(),
+                    1,
+                ).otherwise(0)
+            ).alias("purchase_missing_order_id_count"),
+            F.sum(
+                F.when(
+                    (F.col("event_type") == "search")
+                    & F.col("search_query").isNull(),
+                    1,
+                ).otherwise(0)
+            ).alias("search_missing_query_count"),
+            F.sum(
+                F.when(
+                    (F.col("event_type") == "refund")
+                    & F.col("refund_amount").isNull(),
+                    1,
+                ).otherwise(0)
+            ).alias("refund_missing_amount_count"),
+        )
+        .collect()[0]
+    )
+
+    total_count = scalar_int(metrics_row["total_count"])
+    distinct_event_id = scalar_int(metrics_row["distinct_event_id"])
+    duplicate_count = total_count - distinct_event_id
+
+    invalid_event_type_count = scalar_int(metrics_row["invalid_event_type_count"])
+    invalid_schema_version_count = scalar_int(
+        metrics_row["invalid_schema_version_count"]
+    )
+    null_event_time_count = scalar_int(metrics_row["null_event_time_count"])
+    null_ingest_time_count = scalar_int(metrics_row["null_ingest_time_count"])
+    invalid_time_order_count = scalar_int(metrics_row["invalid_time_order_count"])
+    negative_price_count = scalar_int(metrics_row["negative_price_count"])
+    negative_total_amount_count = scalar_int(
+        metrics_row["negative_total_amount_count"]
+    )
+    negative_refund_amount_count = scalar_int(
+        metrics_row["negative_refund_amount_count"]
+    )
+    purchase_missing_order_id_count = scalar_int(
+        metrics_row["purchase_missing_order_id_count"]
+    )
+    search_missing_query_count = scalar_int(metrics_row["search_missing_query_count"])
+    refund_missing_amount_count = scalar_int(
+        metrics_row["refund_missing_amount_count"]
+    )
+
+    invalid_time_order_ratio = (
+        scalar_float(invalid_time_order_count / total_count)
+        if total_count > 0
+        else 1.0
+    )
 
     rules: list[dict] = []
 
-    # Rule 1
     rules.append(
         make_rule(
             "partition_not_empty",
@@ -61,10 +178,6 @@ def main() -> int:
             "> 0",
         )
     )
-
-    # total_count == 0이면 나머지 계산은 의미가 약하므로 계속 계산은 하되 fail 유지
-    distinct_event_id = df.select("event_id").distinct().count()
-    duplicate_count = total_count - distinct_event_id
 
     rules.append(
         make_rule(
@@ -75,10 +188,6 @@ def main() -> int:
         )
     )
 
-    allowed_event_types = ["view", "search", "add_to_cart", "purchase", "refund"]
-    invalid_event_type_count = df.where(
-        ~F.col("event_type").isin(allowed_event_types) | F.col("event_type").isNull()
-    ).count()
     rules.append(
         make_rule(
             "event_type_allowed",
@@ -88,9 +197,6 @@ def main() -> int:
         )
     )
 
-    invalid_schema_version_count = df.where(
-        ~F.col("schema_version").isin([1, 2]) | F.col("schema_version").isNull()
-    ).count()
     rules.append(
         make_rule(
             "schema_version_allowed",
@@ -100,7 +206,6 @@ def main() -> int:
         )
     )
 
-    null_event_time_count = df.where(F.col("event_time").isNull()).count()
     rules.append(
         make_rule(
             "event_time_not_null",
@@ -110,7 +215,6 @@ def main() -> int:
         )
     )
 
-    null_ingest_time_count = df.where(F.col("ingest_time").isNull()).count()
     rules.append(
         make_rule(
             "ingest_time_not_null",
@@ -120,14 +224,6 @@ def main() -> int:
         )
     )
 
-    invalid_time_order_count = df.where(
-        F.col("event_time").isNotNull()
-        & F.col("ingest_time").isNotNull()
-        & (F.col("event_time") > F.col("ingest_time"))
-    ).count()
-    invalid_time_order_ratio = (
-        (invalid_time_order_count / total_count) if total_count > 0 else 1.0
-    )
     rules.append(
         make_rule(
             "event_time_lte_ingest_time_ratio",
@@ -137,16 +233,6 @@ def main() -> int:
         )
     )
 
-    negative_price_count = df.where(
-        F.col("price").isNotNull() & (F.col("price") < 0)
-    ).count()
-    negative_total_amount_count = df.where(
-        F.col("total_amount").isNotNull() & (F.col("total_amount") < 0)
-    ).count()
-    negative_refund_amount_count = df.where(
-        F.col("refund_amount").isNotNull() & (F.col("refund_amount") < 0)
-    ).count()
-
     rules.append(
         make_rule(
             "price_non_negative",
@@ -155,6 +241,7 @@ def main() -> int:
             0,
         )
     )
+
     rules.append(
         make_rule(
             "total_amount_non_negative",
@@ -163,6 +250,7 @@ def main() -> int:
             0,
         )
     )
+
     rules.append(
         make_rule(
             "refund_amount_non_negative",
@@ -172,9 +260,6 @@ def main() -> int:
         )
     )
 
-    purchase_missing_order_id_count = df.where(
-        (F.col("event_type") == "purchase") & F.col("order_id").isNull()
-    ).count()
     rules.append(
         make_rule(
             "purchase_requires_order_id",
@@ -184,9 +269,6 @@ def main() -> int:
         )
     )
 
-    search_missing_query_count = df.where(
-        (F.col("event_type") == "search") & F.col("search_query").isNull()
-    ).count()
     rules.append(
         make_rule(
             "search_requires_query",
@@ -196,9 +278,6 @@ def main() -> int:
         )
     )
 
-    refund_missing_amount_count = df.where(
-        (F.col("event_type") == "refund") & F.col("refund_amount").isNull()
-    ).count()
     rules.append(
         make_rule(
             "refund_requires_amount",
@@ -223,12 +302,10 @@ def main() -> int:
     print(report_json)
 
     if args.report_out:
-        # Write a Spark output directory/prefix containing text part files
         spark.createDataFrame([(report_json,)], ["json"]).coalesce(1).write.mode(
             "overwrite"
         ).text(args.report_out)
 
-    df.unpersist()
     spark.stop()
     return 0 if all_passed else 2
 
