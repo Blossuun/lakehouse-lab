@@ -575,6 +575,10 @@ s3a://datalake/audit/quality_checks/dt=YYYY-MM-DD/
 - 파티션 단위 검증
 - fail-fast 방식
 - 데이터 수정 없이 검증만 수행
+- 로컬 Spark / Docker 환경을 고려해 가능한 한 집계 중심 방식으로 품질 수치를 계산
+
+현재 quality gate 는 `dt` 파티션 하나를 대상으로 downstream 사용 가능 여부를 빠르게 판단하는 데 목적이 있습니다.  
+즉, 이 단계의 우선순위는 full-table 정밀 감사보다 **로컬에서 재실행 가능한 partition-scoped validation** 입니다.
 
 향후 확장 예정:
 

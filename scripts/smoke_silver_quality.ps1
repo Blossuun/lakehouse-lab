@@ -9,7 +9,6 @@ $ErrorActionPreference = "Stop"
 $ReportOut = "s3a://datalake/audit/quality_checks/dt=$Date"
 
 Write-SparkSmokeVersions
-Initialize-SparkIvyCache
 
 $rc = Initialize-SparkIvyCache
 if ($rc -ne 0) {
