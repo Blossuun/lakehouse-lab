@@ -4,39 +4,20 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$ICEBERG_VERSION = "1.6.0"
-$HADOOP_AWS_VERSION = "3.3.4"
+. "$PSScriptRoot/lib/spark_smoke_common.ps1"
 
-Write-Host "INFO: Using pinned versions ICEBERG=$ICEBERG_VERSION, HADOOP_AWS=$HADOOP_AWS_VERSION"
+Write-SparkSmokeVersions
+Initialize-SparkIvyCache
 
-$PACKAGES = "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:$ICEBERG_VERSION,org.apache.hadoop:hadoop-aws:$HADOOP_AWS_VERSION"
-
-function Run-SparkSubmit {
-  param(
-    [Parameter(Mandatory=$true)]
-    [string[]]$AppArgs
-  )
-
-  $baseArgs = @(
-    "/opt/spark/bin/spark-submit",
-    "--conf", "spark.jars.ivy=/tmp/.ivy2",
-    "--packages", $PACKAGES
-  )
-
-  $cmd = @("docker", "exec", "-i", "lab-spark") + $baseArgs + $AppArgs
-
-  Write-Host "INFO: Running:"
-  Write-Host ("  " + ($cmd -join " "))
-
-  & $cmd[0] $cmd[1..($cmd.Length-1)] | Out-Host
-
-  $exitCode = $LASTEXITCODE
-  return [int]$exitCode
+$rc = Initialize-SparkIvyCache
+if ($rc -ne 0) {
+  Write-Host "FAIL: could not prepare ivy cache directories inside container (exit=$rc)"
+  exit 9
 }
 
 # 1) Inspect snapshots/history
 Write-Host "INFO: 1) Inspect snapshots/history"
-$rc = Run-SparkSubmit @("/opt/lab/jobs/spark/iceberg_inspect.py")
+$rc = Invoke-SparkSubmit @("/opt/lab/jobs/spark/iceberg_inspect.py")
 if ($rc -ne 0) {
   Write-Host "FAIL: inspect job failed (exit=$rc)"
   exit 10
@@ -44,7 +25,10 @@ if ($rc -ne 0) {
 
 # 2) Schema evolution
 Write-Host "INFO: 2) Schema evolution (add column + verify)"
-$rc = Run-SparkSubmit @("/opt/lab/jobs/spark/iceberg_schema_evolution.py", "--date", $Date)
+$rc = Invoke-SparkSubmit @(
+  "/opt/lab/jobs/spark/iceberg_schema_evolution.py",
+  "--date", $Date
+)
 if ($rc -ne 0) {
   Write-Host "FAIL: schema evolution failed (exit=$rc)"
   exit 11
@@ -52,7 +36,10 @@ if ($rc -ne 0) {
 
 # 3) Time travel demo
 Write-Host "INFO: 3) Time travel demo"
-$rc = Run-SparkSubmit @("/opt/lab/jobs/spark/iceberg_time_travel.py", "--date", $Date)
+$rc = Invoke-SparkSubmit @(
+  "/opt/lab/jobs/spark/iceberg_time_travel.py",
+  "--date", $Date
+)
 if ($rc -ne 0) {
   Write-Host "FAIL: time travel failed (exit=$rc)"
   exit 12

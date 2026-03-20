@@ -2,28 +2,28 @@ param(
   [string]$Date = "2026-02-27"
 )
 
-# Start infra if needed (user runs separately)
+$ErrorActionPreference = "Stop"
 
-# Run spark-submit inside the spark container with pinned packages
-# NOTE: Adjust versions if Spark Hadoop version mismatch occurs.
-$ICEBERG_VERSION = "1.6.0"
-$HADOOP_AWS_VERSION = "3.3.4"
-$AWS_SDK_BUNDLE_VERSION = "1.12.262"
+. "$PSScriptRoot/lib/spark_smoke_common.ps1"
 
-$PACKAGES = @(
-  "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:$ICEBERG_VERSION",
-  "org.apache.hadoop:hadoop-aws:$HADOOP_AWS_VERSION"
-) -join ","
+Write-SparkSmokeVersions
+Initialize-SparkIvyCache
 
-docker exec -it lab-spark /opt/spark/bin/spark-submit `
-  --conf spark.jars.ivy=/tmp/.ivy2 `
-  --packages $PACKAGES `
-  /opt/lab/jobs/spark/silver_to_iceberg.py `
-  --date $Date
+$rc = Initialize-SparkIvyCache
+if ($rc -ne 0) {
+  Write-Host "FAIL: could not prepare ivy cache directories inside container (exit=$rc)"
+  exit 9
+}
 
-if ($LASTEXITCODE -ne 0) {
-  Write-Host "FAIL: spark-submit failed"
+$rc = Invoke-SparkSubmit @(
+  "/opt/lab/jobs/spark/silver_to_iceberg.py",
+  "--date", $Date
+)
+
+if ($rc -ne 0) {
+  Write-Host "FAIL: spark-submit failed (exit=$rc)"
   exit 2
 }
 
 Write-Host "OK: smoke_iceberg_table completed"
+exit 0
