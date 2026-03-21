@@ -62,9 +62,9 @@ def main() -> int:
             F.sum(F.when(F.col("event_type") == "search", 1).otherwise(0)).alias(
                 "search_events"
             ),
-            F.sum(
-                F.when(F.col("event_type") == "add_to_cart", 1).otherwise(0)
-            ).alias("add_to_cart_events"),
+            F.sum(F.when(F.col("event_type") == "add_to_cart", 1).otherwise(0)).alias(
+                "add_to_cart_events"
+            ),
             F.sum(F.when(F.col("event_type") == "purchase", 1).otherwise(0)).alias(
                 "purchase_events"
             ),
@@ -117,11 +117,9 @@ def main() -> int:
     event_target = f"{args.catalog}.{args.gold_namespace}.daily_event_metrics"
     write_partitioned_iceberg(spark, event_metrics, event_target)
 
-    revenue_metrics = (
-        base_metrics.withColumn(
-            "net_revenue", F.col("gross_revenue") - F.col("refund_amount")
-        ).select("dt", "gross_revenue", "refund_amount", "net_revenue")
-    )
+    revenue_metrics = base_metrics.withColumn(
+        "net_revenue", F.col("gross_revenue") - F.col("refund_amount")
+    ).select("dt", "gross_revenue", "refund_amount", "net_revenue")
 
     revenue_target = f"{args.catalog}.{args.gold_namespace}.daily_revenue_metrics"
     write_partitioned_iceberg(spark, revenue_metrics, revenue_target)
