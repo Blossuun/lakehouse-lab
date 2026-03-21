@@ -715,7 +715,7 @@ Gold metrics 단계에서 DataFrame cache를 사용하지 않는다.
 
 관련 배경은 다음 문서에 정리했다.
 
-- `docs/learning/0015-gold-metrics-cache-strategy.md`
+- `docs/learning/0014-gold-metrics-cache-strategy.md`
 
 ---
 
