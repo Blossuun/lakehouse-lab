@@ -59,9 +59,9 @@ def build_single_pass_base_metrics(df: DataFrame, date: str) -> DataFrame:
             F.sum(F.when(F.col("event_type") == "search", 1).otherwise(0)).alias(
                 "search_events"
             ),
-            F.sum(
-                F.when(F.col("event_type") == "add_to_cart", 1).otherwise(0)
-            ).alias("add_to_cart_events"),
+            F.sum(F.when(F.col("event_type") == "add_to_cart", 1).otherwise(0)).alias(
+                "add_to_cart_events"
+            ),
             F.sum(F.when(F.col("event_type") == "purchase", 1).otherwise(0)).alias(
                 "purchase_events"
             ),
@@ -181,7 +181,9 @@ def build_multi_pass_metrics(df: DataFrame) -> tuple[DataFrame, DataFrame, DataF
     return event_metrics, revenue_metrics, conversion_metrics
 
 
-def build_single_pass_metrics(base_metrics: DataFrame) -> tuple[DataFrame, DataFrame, DataFrame]:
+def build_single_pass_metrics(
+    base_metrics: DataFrame,
+) -> tuple[DataFrame, DataFrame, DataFrame]:
     event_metrics = base_metrics.select(
         "dt",
         "total_events",
@@ -192,11 +194,9 @@ def build_single_pass_metrics(base_metrics: DataFrame) -> tuple[DataFrame, DataF
         "refund_events",
     )
 
-    revenue_metrics = (
-        base_metrics.withColumn(
-            "net_revenue", F.col("gross_revenue") - F.col("refund_amount")
-        ).select("dt", "gross_revenue", "refund_amount", "net_revenue")
-    )
+    revenue_metrics = base_metrics.withColumn(
+        "net_revenue", F.col("gross_revenue") - F.col("refund_amount")
+    ).select("dt", "gross_revenue", "refund_amount", "net_revenue")
 
     conversion_metrics = (
         base_metrics.withColumn(
@@ -288,7 +288,9 @@ def main() -> int:
             base_metrics
         )
     else:
-        event_metrics, revenue_metrics, conversion_metrics = build_multi_pass_metrics(df)
+        event_metrics, revenue_metrics, conversion_metrics = build_multi_pass_metrics(
+            df
+        )
 
     event_target = f"{args.catalog}.{args.gold_namespace}.daily_event_metrics"
     revenue_target = f"{args.catalog}.{args.gold_namespace}.daily_revenue_metrics"
@@ -305,7 +307,9 @@ def main() -> int:
     print(f"INFO: execution_time_sec={elapsed:.2f}, mode={args.mode}")
 
     if args.metrics_out:
-        append_metrics_line(args.metrics_out, args.mode, args.date, elapsed, total_count)
+        append_metrics_line(
+            args.metrics_out, args.mode, args.date, elapsed, total_count
+        )
 
     print(f"OK: built gold metrics for dt={args.date} mode={args.mode}")
 
