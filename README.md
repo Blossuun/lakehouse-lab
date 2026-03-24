@@ -920,6 +920,12 @@ SELECT * FROM iceberg.analytics.fct_daily_conversion;
 
 Trino 기반 쿼리 레이어 위에, 데이터를 직접 탐색할 수 있는 read-only 대시보드를 추가했다.
 
+실행 전 의존성 설치:
+
+```bash
+uv sync --group dashboard
+```
+
 실행 방법:
 
 ```powershell
@@ -938,7 +944,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\dashboard\run_analysis_dashbo
 - 데이터 수정 없이 조회만 가능한 read-only 구조
 - 로컬 Docker / WSL 환경 기준
 
-이 레이어는 “데이터를 만드는 것”이 아니라
+이 레이어는 “데이터를 만드는 것”이 아니라  
 **“데이터를 실제로 사용하는 방식”**을 보여주기 위한 단계다.
 
 ---

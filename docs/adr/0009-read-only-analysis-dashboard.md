@@ -1,4 +1,4 @@
-# ADR-0010: Read-Only Analysis Dashboard
+# ADR-0009: Read-Only Analysis Dashboard
 
 ## Status
 

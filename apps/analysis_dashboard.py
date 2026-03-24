@@ -12,17 +12,15 @@ def get_trino_connection():
         host=os.getenv("TRINO_HOST", "localhost"),
         port=int(os.getenv("TRINO_PORT", "8080")),
         user=os.getenv("TRINO_USER", "trino"),
-        catalog=os.getenv("TRINO_CATALOG", "iceberg"),
-        schema=os.getenv("TRINO_SCHEMA", "gold"),
     )
 
 
 @st.cache_data(ttl=30, show_spinner=False)
-def run_query(sql: str) -> pd.DataFrame:
+def run_query(sql: str, params: list | tuple | None = None) -> pd.DataFrame:
     conn = get_trino_connection()
     cur = conn.cursor()
     try:
-        cur.execute(sql)
+        cur.execute(sql, params or [])
         rows = cur.fetchall()
         columns = [desc[0] for desc in cur.description] if cur.description else []
         return pd.DataFrame(rows, columns=columns)
@@ -44,7 +42,7 @@ def fetch_available_dates() -> list[str]:
 
 
 def fetch_daily_business_overview(selected_date: str) -> pd.DataFrame:
-    sql = f"""
+    sql = """
     SELECT
         e.dt,
         e.total_events,
@@ -56,14 +54,14 @@ def fetch_daily_business_overview(selected_date: str) -> pd.DataFrame:
     FROM iceberg.gold.daily_event_metrics e
     JOIN iceberg.gold.daily_revenue_metrics r
         ON e.dt = r.dt
-    WHERE e.dt = '{selected_date}'
+    WHERE e.dt = ?
     ORDER BY e.dt
     """
-    return run_query(sql)
+    return run_query(sql, [selected_date])
 
 
 def fetch_conversion_funnel(selected_date: str) -> pd.DataFrame:
-    sql = f"""
+    sql = """
     SELECT
         dt,
         view_events,
@@ -73,36 +71,35 @@ def fetch_conversion_funnel(selected_date: str) -> pd.DataFrame:
         cart_to_purchase_rate,
         view_to_purchase_rate
     FROM iceberg.gold.daily_conversion_metrics
-    WHERE dt = '{selected_date}'
+    WHERE dt = ?
     ORDER BY dt
     """
-    return run_query(sql)
+    return run_query(sql, [selected_date])
 
 
 def fetch_top_products(selected_date: str) -> pd.DataFrame:
-    sql = f"""
+    sql = """
     SELECT
         product_id,
         COUNT(*) AS purchase_count,
         SUM(total_amount) AS revenue
     FROM iceberg.lakehouse.silver_events
     WHERE event_type = 'purchase'
-      AND dt = '{selected_date}'
+      AND dt = ?
       AND product_id IS NOT NULL
       AND TRIM(product_id) <> ''
     GROUP BY product_id
     ORDER BY revenue DESC
     LIMIT 10
     """
-    return run_query(sql)
+    return run_query(sql, [selected_date])
 
 
 def render_connection_sidebar() -> None:
     st.sidebar.header("Connection")
     st.sidebar.write(f"Host: {os.getenv('TRINO_HOST', 'localhost')}")
     st.sidebar.write(f"Port: {os.getenv('TRINO_PORT', '8080')}")
-    st.sidebar.write(f"Catalog: {os.getenv('TRINO_CATALOG', 'iceberg')}")
-    st.sidebar.write(f"Schema: {os.getenv('TRINO_SCHEMA', 'gold')}")
+    st.sidebar.write(f"User: {os.getenv('TRINO_USER', 'trino')}")
 
     if st.sidebar.button("Refresh data"):
         st.cache_data.clear()
