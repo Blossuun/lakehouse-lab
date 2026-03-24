@@ -1089,6 +1089,12 @@ analytics = [
     { name = "dbt-core" },
     { name = "dbt-trino" },
 ]
+api = [
+    { name = "fastapi" },
+    { name = "pandas" },
+    { name = "trino" },
+    { name = "uvicorn" },
+]
 dashboard = [
     { name = "pandas" },
     { name = "streamlit" },
@@ -1111,6 +1117,12 @@ dev = [
 analytics = [
     { name = "dbt-core", specifier = ">=1.11.7" },
     { name = "dbt-trino", specifier = ">=1.10.1" },
+]
+api = [
+    { name = "fastapi", specifier = ">=0.133.0" },
+    { name = "pandas", specifier = ">=2.3.3" },
+    { name = "trino", specifier = ">=0.337.0" },
+    { name = "uvicorn", specifier = ">=0.41.0" },
 ]
 dashboard = [
     { name = "pandas", specifier = ">=2.3.3" },
