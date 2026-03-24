@@ -146,13 +146,13 @@ def main():
         c2.metric("Purchase Events", int(row["purchase_events"]))
         c3.metric("Refund Events", int(row["refund_events"]))
         c4.metric("Net Revenue", f"{float(row['net_revenue']):,.2f}")
-        st.dataframe(overview_df, use_container_width=True)
+        st.dataframe(overview_df, width="stretch")
 
     st.subheader("Conversion Funnel")
-    st.dataframe(funnel_df, use_container_width=True)
+    st.dataframe(funnel_df, width="stretch")
 
     st.subheader("Top Products")
-    st.dataframe(products_df, use_container_width=True)
+    st.dataframe(products_df, width="stretch")
 
 
 if __name__ == "__main__":
