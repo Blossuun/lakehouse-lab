@@ -916,6 +916,33 @@ SELECT * FROM iceberg.analytics.fct_daily_conversion;
 
 ---
 
+## 📊 분석 대시보드 (Analysis Dashboard)
+
+Trino 기반 쿼리 레이어 위에, 데이터를 직접 탐색할 수 있는 read-only 대시보드를 추가했다.
+
+실행 방법:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\dashboard\run_analysis_dashboard.ps1
+```
+
+대시보드에서 확인할 수 있는 항목:
+
+- 일별 비즈니스 개요 (Gold)
+- 전환 퍼널 (Gold)
+- 상위 상품 (Silver)
+
+특징:
+
+- 모든 데이터 조회는 Trino를 통해 수행
+- 데이터 수정 없이 조회만 가능한 read-only 구조
+- 로컬 Docker / WSL 환경 기준
+
+이 레이어는 “데이터를 만드는 것”이 아니라
+**“데이터를 실제로 사용하는 방식”**을 보여주기 위한 단계다.
+
+---
+
 ## Metric Layer Ownership
 
 현재 프로젝트에는 지표를 다루는 두 개의 레이어가 있다.
