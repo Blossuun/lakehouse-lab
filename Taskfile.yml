@@ -82,3 +82,8 @@ tasks:
     cmds:
       - uv sync --dev --group analytics
       - powershell.exe -ExecutionPolicy Bypass -File "./scripts/smoke_dbt_trino_analytics.ps1"
+
+  validate:all:
+    desc: Run full system validation
+    cmds:
+      - powershell.exe -ExecutionPolicy Bypass -File "./scripts/validation/run_e2e_validation.ps1"
