@@ -1,4 +1,4 @@
-# Lakehouse MLOps / AIOps Lab
+# Lakehouse Lab
 
 이 저장소는 로컬 Docker 환경에서 다음을 end-to-end로 구현하는 실습형 프로젝트다.
 
